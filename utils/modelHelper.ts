@@ -1,14 +1,14 @@
 import * as ort from 'onnxruntime-web';
 import _ from 'lodash';
-import { imagenetClasses } from '../data/imagenet';
+import { Classes } from '../data/VGG_Classes';
 
 export async function runSqueezenetModel(preprocessedData: any): Promise<[any, number]> {
   
   // Create session and set options. See the docs here for more options: 
   //https://onnxruntime.ai/docs/api/js/interfaces/InferenceSession.SessionOptions.html#graphOptimizationLevel
   const session = await ort.InferenceSession
-                          .create('./_next/static/chunks/pages/squeezenet1_1.onnx', 
-                          { executionProviders: ['webgl'], graphOptimizationLevel: 'all' });
+                          .create('D:\AAST\Graduation Project\Project 2\Deployment\nextjs temp\onnxruntime-nextjs-template-main\model\VGG16_onnx.onnx', 
+                          { executionProviders: ['webgl'], graphOptimizationLevel: 'disabled' });
   console.log('Inference session created')
   // Run inference and get results.
   var [results, inferenceTime] =  await runInference(session, preprocessedData);
@@ -34,7 +34,7 @@ async function runInference(session: ort.InferenceSession, preprocessedData: any
   var outputSoftmax = softmax(Array.prototype.slice.call(output.data));
   
   //Get the top 5 results.
-  var results = imagenetClassesTopK(outputSoftmax, 5);
+  var results = imagenetClassesTopK(outputSoftmax, 7);
   console.log('results: ', results);
   return [results, inferenceTime];
 }
@@ -53,14 +53,14 @@ function softmax(resultArray: number[]): any {
 /**
  * Find top k imagenet classes
  */
-export function imagenetClassesTopK(classProbabilities: any, k = 5) {
+export function imagenetClassesTopK(classProbabilities: any, k = 7) {
   const probs =
       _.isTypedArray(classProbabilities) ? Array.prototype.slice.call(classProbabilities) : classProbabilities;
 
   const sorted = _.reverse(_.sortBy(probs.map((prob: any, index: number) => [prob, index]), (probIndex: Array<number> ) => probIndex[0]));
 
   const topK = _.take(sorted, k).map((probIndex: Array<number>) => {
-    const iClass = imagenetClasses[probIndex[1]];
+    const iClass = Classes[probIndex[1]];
     return {
       id: iClass[0],
       index: parseInt(probIndex[1].toString(), 10),
