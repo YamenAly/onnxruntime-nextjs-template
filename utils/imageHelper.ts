@@ -1,5 +1,7 @@
 import * as Jimp from 'jimp';
 import { Tensor } from 'onnxruntime-web';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 export async function getImageTensorFromPath(path: string, dims: number[] =  [1, 3, 224, 224]): Promise<Tensor> {
   // 1. load the image  
@@ -10,13 +12,37 @@ export async function getImageTensorFromPath(path: string, dims: number[] =  [1,
   return imageTensor;
 }
 
-async function loadImageFromPath(path: string, width: number = 224, height: number= 224): Promise<Jimp> {
-  // Use Jimp to load the image and resize it.
-  var imageData = await Jimp.default.read(path).then((imageBuffer: Jimp) => {
+const execAsync = promisify(exec);
+
+async function loadImageFromPath(path: string, width: number = 224, height: number = 224): Promise<Jimp> {
+  // Define paths for intermediate and final images
+  const dicomImagePath = path;
+  const convertedImagePath = './data/input.png';
+
+  // Use DCMTK's dcmtopgm to convert DICOM to PNG
+  await execAsync(`dcmtopgm ${dicomImagePath} ${convertedImagePath}`);
+
+  // Use Jimp to load the converted PNG image and resize it
+  const imageData = await Jimp.read(convertedImagePath).then((imageBuffer: Jimp) => {
     return imageBuffer.resize(width, height);
   });
 
   return imageData;
+}
+
+async function processImage() {
+  try {
+    // Use Jimp to read the PNG image
+    const image = await Jimp.read('path/to/your/output.png');
+
+    // Manipulate the image (e.g., resize)
+    const resizedImage = await image.resize(224, 224);
+
+    // Save the manipulated image
+    await resizedImage.writeAsync('path/to/your/output_resized.png');
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
 function imageDataToTensor(image: Jimp, dims: number[]): Tensor {
